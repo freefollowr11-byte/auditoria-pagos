@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Pagos Histórico - Netlify</title>
+    <title>Auditoría de Pagos Histórica - GitHub Cloud</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #0b141a; color: #e9edef; height: 100vh; display: flex; overflow: hidden; position: relative; flex-direction: column; }
@@ -51,7 +51,7 @@
         
         .sidebar-overlay { display: none; position: fixed; top: 60px; left: 0; width: 100vw; height: calc(100vh - 60px); background-color: rgba(0,0,0,0.7); z-index: 2500; }
 
-        /* PANTALLA INICIAL DE SERVIDOR */
+        /* PANTALLA INICIAL */
         .loading-screen { display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0b141a; z-index: 9000; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: #e9edef; }
         .spinner { width: 45px; height: 45px; border: 4px solid #202c33; border-top: 4px solid #00a884; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
 
@@ -80,21 +80,21 @@
 <body>
 
     <div class="top-bar">
-        <h2>Control de Pagos Precargado</h2>
+        <h2>Control de Pagos Integrado Cloud</h2>
         <button class="menu-toggle" id="btn-toggle-menu">☰ Filtrar</button>
     </div>
 
     <div class="loading-screen" id="loading-screen">
         <div class="spinner"></div>
-        <h3 style="color:#00a884;">Conectando con base de datos Cloud...</h3>
-        <p style="color:#8696a0; font-size:13px; margin-top:5px;">Leyendo historial e indexando imágenes de Netlify</p>
+        <h3 style="color:#00a884;">Indexando base de datos cloud...</h3>
+        <p style="color:#8696a0; font-size:13px; margin-top:5px;">Cargando historial de WhatsApp y vinculando imágenes</p>
     </div>
 
     <div class="main-wrapper">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-header" style="margin-bottom:15px; font-weight:bold; color:#00a884;">BÚSQUEDA CLOUD</div>
+            <div class="sidebar-header" style="margin-bottom:15px; font-weight:bold; color:#00a884;">FILTROS CLOUD</div>
 
             <div class="input-name-field">
                 <label for="right-user">Tu nombre (Burbuja verde):</label>
@@ -151,23 +151,21 @@
         const printTargetImg = document.getElementById('print-target-img');
         const loadingScreen = document.getElementById('loading-screen');
 
-        // Lazy Loading Inteligente: Jala la foto de Netlify solo si aparece en pantalla
+        // Lazy Loading: Busca de forma relativa en el servidor de Netlify/GitHub solo al mostrarse en pantalla
         let lazyImageObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     let image = entry.target;
-                    // Llama de forma directa al archivo relativo en el servidor
                     image.src = encodeURIComponent(image.dataset.srcName);
                     observer.unobserve(image);
                 }
             });
-        }, { root: chatContainer, rootMargin: "250px 0px" });
+        }, { root: chatContainer, rootMargin: "350px 0px" });
 
-        // Cargar automáticamente al abrir la página web
         window.addEventListener('DOMContentLoaded', () => {
             fetch('_chat.txt')
                 .then(response => {
-                    if (!response.ok) throw new Error('No se encontró el archivo _chat.txt en Netlify');
+                    if (!response.ok) throw new Error('No se encontró el archivo _chat.txt');
                     return response.text();
                 })
                 .then(text => {
@@ -176,7 +174,7 @@
                 })
                 .catch(err => {
                     alert(err.message);
-                    statusVal.textContent = "Error Cloud";
+                    statusVal.textContent = "Error de Servidor";
                     statusVal.style.color = "#e76f51";
                 });
         });
@@ -199,7 +197,6 @@
         function procesarChatWhatsApp(contenidoTexto) {
             const lineas = contenidoTexto.split(/\r?\n/);
             const regexFormato = /^[\u200e\u200f]?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s(\d{1,2}:\d{2}(?::\d{2})?\s?[ap]\.?\s?m\.?)\s-\s([^:]+):\s(.*)$/i;
-
             let mensajesProcesados = [];
             let ultimoMensaje = null;
             let mesesDetectados = new Set();
@@ -209,7 +206,6 @@
                 if (!lineaLimpia) continue;
 
                 const coincidencia = lineaLimpia.match(regexFormato);
-
                 if (coincidencia) {
                     const [_, dia, mes, anio, hora, autor, texto] = coincidencia;
                     const mesFormateado = mes.padStart(2, '0');
@@ -232,7 +228,6 @@
 
             todosLosMensajes = mensajesProcesados;
             construirSelectorMeses(mesesDetectados);
-
             searchInput.disabled = false;
             dateFilter.disabled = false;
             renderChat(todosLosMensajes);
@@ -288,9 +283,9 @@
                 if (tieneArchivo) {
                     const nomMinus = nombreArchivoDetectado.toLowerCase();
                     if (nomMinus.endsWith('.jpg') || nomMinus.endsWith('.jpeg') || nomMinus.endsWith('.png') || nomMinus.endsWith('.gif')) {
-                        contenidoHTML += `<img data-src-name="${nombreArchivoDetectado}" class="chat-image lazy-chat-img" alt="Comprobante" onclick="abrirModalPorUrl('${encodeURIComponent(nombreArchivoDetectado)}')">`;
+                        contenidoHTML += `<img data-src-name="${nombreArchivoDetectado}" class="chat-image lazy-chat-img" alt="Cargando..." onclick="abrirModalPorUrl('${encodeURIComponent(nombreArchivoDetectado)}')">`;
                     } else {
-                        contenidoHTML += `<div style="color: #8696a0; font-size:12px;">📄 Doc no visualizable en chat: ${nombreArchivoDetectado}</div>`;
+                        contenidoHTML += `<div style="color: #8696a0; font-size:12px;">📄 Doc no visible: ${nombreArchivoDetectado}</div>`;
                     }
                 } else {
                     contenidoHTML += `<div>${escaparHTML(textoMensaje)}</div>`;
