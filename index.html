@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría de Pagos Histórica</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0b141a; color: #e9edef; height: 100vh; display: flex; overflow: hidden; position: relative; flex-direction: column; }
+        
+        /* BARRA SUPERIOR */
+        .top-bar { background-color: #111b21; border-bottom: 1px solid #222e35; height: 60px; display: flex; align-items: center; padding: 0 15px; position: relative; z-index: 2000; justify-content: space-between; }
+        .top-bar h2 { font-size: 16px; font-weight: bold; color: #e9edef; }
+        .menu-toggle { background-color: #00a884; color: white; border: none; padding: 10px 18px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+
+        .main-wrapper { display: flex; flex-grow: 1; height: calc(100vh - 60px); position: relative; width: 100%; }
+
+        /* Panel Lateral */
+        .sidebar { width: 340px; background-color: #111b21; border-right: 1px solid #222e35; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; transition: transform 0.3s ease-in-out; z-index: 3000; height: 100%; overflow-y: auto; }
+        
+        .input-name-field { margin-bottom: 15px; }
+        .input-name-field label { display: block; font-size: 11px; color: #8696a0; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; }
+        .input-name-field input, .input-name-field select { width: 100%; background-color: #2a3942; border: 1px solid #222e35; color: #e9edef; padding: 12px; border-radius: 6px; outline: none; font-size: 14px; }
+        
+        .stats-panel { background-color: #202c33; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .stats-title { font-size: 11px; color: #8696a0; text-transform: uppercase; margin-bottom: 10px; font-weight: bold; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13.5px; }
+        .stat-val { font-weight: bold; color: #00a884; }
+        
+        .search-container { margin-top: auto; padding-top: 15px; }
+        .search-container input { width: 100%; background-color: #202c33; border: none; padding: 12px; border-radius: 8px; color: #e9edef; outline: none; font-size: 14px; }
+        
+        /* Área de Chat */
+        .chat-area { flex-grow: 1; background-color: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; height: 100%; width: 100%; }
+        .chat-container { width: 100%; height: 100%; display: flex; flex-direction: column; overflow-y: auto; padding: 15px; }
+        .message-row { display: flex; width: 100%; margin-bottom: 12px; }
+        .message-row.sent { justify-content: flex-end; }
+        .message-row.received { justify-content: flex-start; }
+        
+        .bubble { max-width: 85%; padding: 10px 14px; border-radius: 8px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); }
+        .sent .bubble { background-color: #005c4b; color: #e9edef; border-top-right-radius: 0; }
+        .received .bubble { background-color: #202c33; color: #e9edef; border-top-left-radius: 0; }
+        
+        .author-name { font-size: 12px; font-weight: 600; color: #53bdeb; margin-bottom: 4px; display: block; }
+        .sent .author-name { display: none; }
+        
+        /* Ajuste de Imágenes */
+        .chat-image { max-width: 100%; max-height: 250px; border-radius: 6px; margin-top: 8px; display: block; cursor: pointer; background-color: #111b21; min-width: 180px; min-height: 120px; object-fit: cover; }
+        .timestamp { display: block; text-align: right; font-size: 10px; color: #8696a0; margin-top: 6px; }
+        
+        .sidebar-overlay { display: none; position: fixed; top: 60px; left: 0; width: 100vw; height: calc(100vh - 60px); background-color: rgba(0,0,0,0.7); z-index: 2500; }
+
+        /* PANTALLA INICIAL */
+        .loading-screen { display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0b141a; z-index: 9000; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: #e9edef; }
+        .spinner { width: 45px; height: 45px; border: 4px solid #202c33; border-top: 4px solid #00a884; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 6000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(11, 20, 26, 0.98); justify-content: center; align-items: center; flex-direction: column; padding: 15px; }
+        .modal-content { max-width: 100%; max-height: 75vh; border-radius: 4px; object-fit: contain; }
+        .modal-toolbar { margin-top: 15px; display: flex; gap: 12px; width: 100%; justify-content: center; }
+        .modal-btn { background-color: #00a884; color: white; border: none; padding: 14px 20px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; flex-grow: 1; }
+        .modal-btn.close-btn { background-color: #202c33; border: 1px solid #374248; }
+
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; top: 0; left: 0; transform: translateX(-100%); width: 100%; max-width: 320px; }
+            .sidebar.menu-abierto { transform: translateX(0); }
+            .sidebar-overlay.mostrar-overlay { display: block; }
+            .modal-toolbar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <h2>Control de Pagos Protecnia Cloud</h2>
+        <button class="menu-toggle" id="btn-toggle-menu">☰ Filtrar</button>
+    </div>
+
+    <div class="loading-screen" id="loading-screen">
+        <div class="spinner"></div>
+        <h3 style="color:#00a884;">Indexando base de datos cloud...</h3>
+        <p style="color:#8696a0; font-size:13px; margin-top:5px;">Vinculando Comprobantes e Imágenes</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header" style="margin-bottom:15px; font-weight:bold; color:#00a884;">FILTROS DE AUDITORÍA</div>
+
+            <div class="input-name-field">
+                <label for="right-user">Burbuja verde (Tu usuario):</label>
+                <input type="text" id="right-user" value="Kilroy">
+            </div>
+
+            <div class="input-name-field">
+                <label for="date-filter">Filtrar por Mes:</label>
+                <select id="date-filter" disabled>
+                    <option value="todos">Todos los meses</option>
+                </select>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stats-title">Métricas del Servidor</div>
+                <div class="stat-row"><span>Estado:</span><span id="status-val" style="color: #00a884;">Online</span></div>
+                <div class="stat-row"><span>Mensajes totales:</span><span id="msg-count" class="stat-val">0</span></div>
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Buscar concepto o monto..." disabled>
+            </div>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-container" id="chat-container"></div>
+        </div>
+    </div>
+
+    <div id="image-modal" class="modal">
+        <img class="modal-content" id="modal-img">
+        <div class="modal-toolbar">
+            <button class="modal-btn" onclick="window.print()">🖨️ Imprimir Imagen</button>
+            <button class="modal-btn close-btn" onclick="cerrarModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        let todosLosMensajes = [];
+        
+        const btnToggleMenu = document.getElementById('btn-toggle-menu');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const rightUserInput = document.getElementById('right-user');
+        const dateFilter = document.getElementById('date-filter');
+        const statusVal = document.getElementById('status-val');
+        const msgCount = document.getElementById('msg-count');
+        const searchInput = document.getElementById('search-input');
+        const chatContainer = document.getElementById('chat-container');
+        const imageModal = document.getElementById('image-modal');
+        const modalImg = document.getElementById('modal-img');
+        const loadingScreen = document.getElementById('loading-screen');
+
+        let lazyImageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    let image = entry.target;
+                    // Forzar carga de ruta limpia y relativa en el hosting
+                    image.src = encodeURI(image.dataset.srcName.trim());
+                    observer.unobserve(image);
+                }
+            });
+        }, { root: chatContainer, rootMargin: "400px 0px" });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetch('_chat.txt')
+                .then(response => {
+                    if (!response.ok) throw new Error('No se encontró el archivo _chat.txt');
+                    return response.text();
+                })
+                .then(text => {
+                    procesarChatWhatsApp(text);
+                    loadingScreen.style.display = "none";
+                })
+                .catch(err => {
+                    alert(err.message);
+                    statusVal.textContent = "Error";
+                });
+        });
+
+        btnToggleMenu.addEventListener('click', () => {
+            sidebar.classList.toggle('menu-abierto');
+            overlay.classList.toggle('mostrar-overlay');
+        });
+
+        overlay.addEventListener('click', cerrarMenu);
+        function cerrarMenu() {
+            sidebar.classList.remove('menu-abierto');
+            overlay.classList.remove('mostrar-overlay');
+        }
+
+        rightUserInput.addEventListener('input', aplicarFiltrosCombinados);
+        searchInput.addEventListener('input', aplicarFiltrosCombinados);
+        dateFilter.addEventListener('change', aplicarFiltrosCombinados);
+
+        function procesarChatWhatsApp(contenidoTexto) {
+            const lineas = contenidoTexto.split(/\r?\n/);
+            const regexFormato = /^[\u200e\u200f]?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s(\d{1,2}:\d{2}(?::\d{2})?\s?[ap]\.?\s?m\.?)\s-\s([^:]+):\s(.*)$/i;
+            let mensajesProcesados = [];
+            let ultimoMensaje = null;
+            let mesesDetectados = new Set();
+
+            for (let i = 0; i < lineas.length; i++) {
+                let lineaLimpia = lineas[i].replace(/[\u200e\u200f\u202a-\u202e]/g, "").trim();
+                if (!lineaLimpia) continue;
+
+                const coincidencia = lineaLimpia.match(regexFormato);
+                if (coincidencia) {
+                    const [_, dia, mes, anio, hora, autor, texto] = coincidencia;
+                    const mesFormateado = mes.padStart(2, '0');
+                    const anioCompleto = anio.length === 2 ? "20" + anio : anio;
+                    const llaveMes = `${anioCompleto}-${mesFormateado}`;
+                    mesesDetectados.add(llaveMes);
+
+                    ultimoMensaje = {
+                        fecha: `${dia}/${mes}/${anio}`,
+                        llaveMes: llaveMes,
+                        hora: hora.replace(/\s+/g, " ").toUpperCase(),
+                        autor: autor.trim(),
+                        contenido: texto.trim()
+                    };
+                    mensajesProcesados.push(ultimoMensaje);
+                } else if (ultimoMensaje && !/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(lineaLimpia)) {
+                    ultimoMensaje.contenido += "\n" + lineaLimpia;
+                }
+            }
+            todosLosMensajes = mensajesProcesados;
+            construirSelectorMeses(mesesDetectados);
+            searchInput.disabled = false;
+            dateFilter.disabled = false;
+            renderChat(todosLosMensajes);
+        }
+
+        function construirSelectorMeses(setMeses) {
+            const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const mesesOrdenados = Array.from(setMeses).sort().reverse();
+            dateFilter.innerHTML = '<option value="todos">Todos los meses</option>';
+            mesesOrdenados.forEach(llave => {
+                const [anio, mesNum] = llave.split('-');
+                const option = document.createElement('option');
+                option.value = llave;
+                option.textContent = `${mesesNombres[parseInt(mesNum) - 1]} ${anio}`;
+                dateFilter.appendChild(option);
+            });
+        }
+
+        function aplicarFiltrosCombinados() {
+            const queryTexto = searchInput.value.toLowerCase();
+            const mesSeleccionado = dateFilter.value;
+            const filtrados = todosLosMensajes.filter(msg => {
+                const cumpleTexto = msg.contenido.toLowerCase().includes(queryTexto) || msg.autor.toLowerCase().includes(queryTexto);
+                const cumpleMes = (mesSeleccionado === "todos") || (msg.llaveMes === mesSeleccionado);
+                return cumpleTexto && cumpleMes;
+            });
+            renderChat(filtrados);
+        }
+
+        function renderChat(mensajes) {
+            chatContainer.innerHTML = "";
+            const miUsuario = rightUserInput.value.trim().toLowerCase();
+            msgCount.textContent = mensajes.length;
+
+            mensajes.forEach(msg => {
+                const msgRow = document.createElement('div');
+                msgRow.classList.add('message-row');
+                msgRow.classList.add(msg.autor.toLowerCase() === miUsuario ? 'sent' : 'received');
+
+                let contenidoHTML = `<span class="author-name">${msg.autor}</span>`;
+                let textoMensaje = msg.contenido;
+                
+                // Extracción ultra-precisa: busca cualquier patrón que contenga un nombre con extensión de imagen (.jpg, .jpeg, .png)
+                let regexImagen = /(IMG-\d{8}-WA\d{4}\.jpe?g|IMG-\d{8}-WA\d{4}\.png)/i;
+                let coincidenciaImagen = textoMensaje.match(regexImagen);
+
+                if (coincidenciaImagen) {
+                    let nombreImagenReal = coincidenciaImagen[0];
+                    contenidoHTML += `<img data-src-name="${nombreImagenReal}" class="chat-image lazy-chat-img" alt="Comprobante" onclick="abrirModalPorUrl(this.src)">`;
+                } else {
+                    contenidoHTML += `<div>${escaparHTML(textoMensaje)}</div>`;
+                }
+
+                contenidoHTML += `<span class="timestamp">${msg.fecha} - ${msg.hora}</span>`;
+                msgRow.innerHTML = `<div class="bubble">${contenidoHTML}</div>`;
+                chatContainer.appendChild(msgRow);
+            });
+
+            const imagenesParaObservar = chatContainer.querySelectorAll('.lazy-chat-img');
+            imagenesParaObservar.forEach(img => lazyImageObserver.observe(img));
+        }
+
+        function abrirModalPorUrl(urlArchivo) {
+            modalImg.src = urlArchivo;
+            imageModal.style.display = "flex";
+        }
+
+        function cerrarModal() {
+            imageModal.style.display = "none";
+            modalImg.src = "";
+        }
+
+        function escaparHTML(string) { return string.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    </script>
+</body>
+</html>
