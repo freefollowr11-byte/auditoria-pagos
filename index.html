@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auditoría de Pagos Histórica - GitHub Cloud</title>
+    <title>Auditoría de Pagos Histórica</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #0b141a; color: #e9edef; height: 100vh; display: flex; overflow: hidden; position: relative; flex-direction: column; }
@@ -32,7 +32,6 @@
         
         /* Área de Chat */
         .chat-area { flex-grow: 1; background-color: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; height: 100%; width: 100%; }
-        
         .chat-container { width: 100%; height: 100%; display: flex; flex-direction: column; overflow-y: auto; padding: 15px; }
         .message-row { display: flex; width: 100%; margin-bottom: 12px; }
         .message-row.sent { justify-content: flex-end; }
@@ -45,8 +44,8 @@
         .author-name { font-size: 12px; font-weight: 600; color: #53bdeb; margin-bottom: 4px; display: block; }
         .sent .author-name { display: none; }
         
-        /* Lazy Load de Servidor */
-        .chat-image { max-width: 100%; max-height: 250px; border-radius: 6px; margin-top: 5px; display: block; cursor: pointer; background-color: #111b21; min-width: 180px; min-height: 120px; }
+        /* Ajuste de Imágenes */
+        .chat-image { max-width: 100%; max-height: 250px; border-radius: 6px; margin-top: 8px; display: block; cursor: pointer; background-color: #111b21; min-width: 180px; min-height: 120px; object-fit: cover; }
         .timestamp { display: block; text-align: right; font-size: 10px; color: #8696a0; margin-top: 6px; }
         
         .sidebar-overlay { display: none; position: fixed; top: 60px; left: 0; width: 100vw; height: calc(100vh - 60px); background-color: rgba(0,0,0,0.7); z-index: 2500; }
@@ -70,34 +69,29 @@
             .sidebar-overlay.mostrar-overlay { display: block; }
             .modal-toolbar { flex-direction: column; }
         }
-        @media print {
-            body * { display: none !important; }
-            html, body { background: white !important; }
-            #print-area-wrapper, #print-area-wrapper * { display: block !important; margin: 0 auto !important; max-width: 100% !important; }
-        }
     </style>
 </head>
 <body>
 
     <div class="top-bar">
-        <h2>Control de Pagos Integrado Cloud</h2>
+        <h2>Control de Pagos Protecnia Cloud</h2>
         <button class="menu-toggle" id="btn-toggle-menu">☰ Filtrar</button>
     </div>
 
     <div class="loading-screen" id="loading-screen">
         <div class="spinner"></div>
         <h3 style="color:#00a884;">Indexando base de datos cloud...</h3>
-        <p style="color:#8696a0; font-size:13px; margin-top:5px;">Cargando historial de WhatsApp y vinculando imágenes</p>
+        <p style="color:#8696a0; font-size:13px; margin-top:5px;">Vinculando Comprobantes e Imágenes</p>
     </div>
 
     <div class="main-wrapper">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-header" style="margin-bottom:15px; font-weight:bold; color:#00a884;">FILTROS CLOUD</div>
+            <div class="sidebar-header" style="margin-bottom:15px; font-weight:bold; color:#00a884;">FILTROS DE AUDITORÍA</div>
 
             <div class="input-name-field">
-                <label for="right-user">Tu nombre (Burbuja verde):</label>
+                <label for="right-user">Burbuja verde (Tu usuario):</label>
                 <input type="text" id="right-user" value="Kilroy">
             </div>
 
@@ -109,8 +103,8 @@
             </div>
 
             <div class="stats-panel">
-                <div class="stats-title">Métricas de Servidor</div>
-                <div class="stat-row"><span>Estado:</span><span id="status-val" style="color: #00a884;">Conectado</span></div>
+                <div class="stats-title">Métricas del Servidor</div>
+                <div class="stat-row"><span>Estado:</span><span id="status-val" style="color: #00a884;">Online</span></div>
                 <div class="stat-row"><span>Mensajes totales:</span><span id="msg-count" class="stat-val">0</span></div>
             </div>
 
@@ -127,12 +121,10 @@
     <div id="image-modal" class="modal">
         <img class="modal-content" id="modal-img">
         <div class="modal-toolbar">
-            <button class="modal-btn" onclick="window.print()">🖨️ Imprimir Recibo</button>
+            <button class="modal-btn" onclick="window.print()">🖨️ Imprimir Imagen</button>
             <button class="modal-btn close-btn" onclick="cerrarModal()">Cerrar</button>
         </div>
     </div>
-    
-    <div id="print-area-wrapper" style="display:none;"><img id="print-target-img"></div>
 
     <script>
         let todosLosMensajes = [];
@@ -148,19 +140,18 @@
         const chatContainer = document.getElementById('chat-container');
         const imageModal = document.getElementById('image-modal');
         const modalImg = document.getElementById('modal-img');
-        const printTargetImg = document.getElementById('print-target-img');
         const loadingScreen = document.getElementById('loading-screen');
 
-        // Lazy Loading: Busca de forma relativa en el servidor de Netlify/GitHub solo al mostrarse en pantalla
         let lazyImageObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     let image = entry.target;
-                    image.src = encodeURIComponent(image.dataset.srcName);
+                    // Forzar carga de ruta limpia y relativa en el hosting
+                    image.src = encodeURI(image.dataset.srcName.trim());
                     observer.unobserve(image);
                 }
             });
-        }, { root: chatContainer, rootMargin: "350px 0px" });
+        }, { root: chatContainer, rootMargin: "400px 0px" });
 
         window.addEventListener('DOMContentLoaded', () => {
             fetch('_chat.txt')
@@ -174,8 +165,7 @@
                 })
                 .catch(err => {
                     alert(err.message);
-                    statusVal.textContent = "Error de Servidor";
-                    statusVal.style.color = "#e76f51";
+                    statusVal.textContent = "Error";
                 });
         });
 
@@ -225,7 +215,6 @@
                     ultimoMensaje.contenido += "\n" + lineaLimpia;
                 }
             }
-
             todosLosMensajes = mensajesProcesados;
             construirSelectorMeses(mesesDetectados);
             searchInput.disabled = false;
@@ -237,7 +226,6 @@
             const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const mesesOrdenados = Array.from(setMeses).sort().reverse();
             dateFilter.innerHTML = '<option value="todos">Todos los meses</option>';
-            
             mesesOrdenados.forEach(llave => {
                 const [anio, mesNum] = llave.split('-');
                 const option = document.createElement('option');
@@ -250,7 +238,6 @@
         function aplicarFiltrosCombinados() {
             const queryTexto = searchInput.value.toLowerCase();
             const mesSeleccionado = dateFilter.value;
-
             const filtrados = todosLosMensajes.filter(msg => {
                 const cumpleTexto = msg.contenido.toLowerCase().includes(queryTexto) || msg.autor.toLowerCase().includes(queryTexto);
                 const cumpleMes = (mesSeleccionado === "todos") || (msg.llaveMes === mesSeleccionado);
@@ -271,22 +258,14 @@
 
                 let contenidoHTML = `<span class="author-name">${msg.autor}</span>`;
                 let textoMensaje = msg.contenido;
-                let tieneArchivo = false;
-                let nombreArchivoDetectado = "";
+                
+                // Extracción ultra-precisa: busca cualquier patrón que contenga un nombre con extensión de imagen (.jpg, .jpeg, .png)
+                let regexImagen = /(IMG-\d{8}-WA\d{4}\.jpe?g|IMG-\d{8}-WA\d{4}\.png)/i;
+                let coincidenciaImagen = textoMensaje.match(regexImagen);
 
-                if (textoMensaje.includes("(archivo adjunto)") || textoMensaje.includes("omitido")) {
-                    const partes = textoMensaje.split(" (archivo adjunto)");
-                    nombreArchivoDetectado = partes[0].trim();
-                    tieneArchivo = true;
-                }
-
-                if (tieneArchivo) {
-                    const nomMinus = nombreArchivoDetectado.toLowerCase();
-                    if (nomMinus.endsWith('.jpg') || nomMinus.endsWith('.jpeg') || nomMinus.endsWith('.png') || nomMinus.endsWith('.gif')) {
-                        contenidoHTML += `<img data-src-name="${nombreArchivoDetectado}" class="chat-image lazy-chat-img" alt="Cargando..." onclick="abrirModalPorUrl('${encodeURIComponent(nombreArchivoDetectado)}')">`;
-                    } else {
-                        contenidoHTML += `<div style="color: #8696a0; font-size:12px;">📄 Doc no visible: ${nombreArchivoDetectado}</div>`;
-                    }
+                if (coincidenciaImagen) {
+                    let nombreImagenReal = coincidenciaImagen[0];
+                    contenidoHTML += `<img data-src-name="${nombreImagenReal}" class="chat-image lazy-chat-img" alt="Comprobante" onclick="abrirModalPorUrl(this.src)">`;
                 } else {
                     contenidoHTML += `<div>${escaparHTML(textoMensaje)}</div>`;
                 }
@@ -302,7 +281,6 @@
 
         function abrirModalPorUrl(urlArchivo) {
             modalImg.src = urlArchivo;
-            printTargetImg.src = urlArchivo;
             imageModal.style.display = "flex";
         }
 
